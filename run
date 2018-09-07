@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# define some colors to use for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Remove the built file if it exists
+cleanup() {
+	cd golangredisserver > /dev/null 2>&1
+	rm -rf golangredisserver > /dev/null 2>&1
+}
+
+# catch failures and clean up
+trap 'cleanup ; printf "${RED}Running redis server interrupted! ${NC}\n"'\
+	HUP INT QUIT PIPE TERM
+
+# change to the directory for the main.go file
+cd golangredisserver
+go build
+printf "${GREEN}Running redis server${NC}\n"
+./golangredisserver
+cleanup
+

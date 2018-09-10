@@ -1,5 +1,12 @@
 package main
 
+/*
+	NEXT STEPS
+
+	- Create a router struct similar to gorrilla mux which basically stores a hashmap of functions for each command within Redis and forwards an incoming line to a handler func.
+	- Pull out all the logic you can into something separate from the specifics of connection etc.
+*/
+
 import (
 	"fmt"
 	"github.com/onepointsixtwo/golangredisserver"

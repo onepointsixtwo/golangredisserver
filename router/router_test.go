@@ -20,10 +20,10 @@ func TestSuccessfulRouting(t *testing.T) {
 	router.AddRedisCommandHandler("PING", tester.handlePingCommand)
 	router.AddRedisCommandHandler("GET", tester.handleGetCommand)
 
-	_ = router.routeIncomingCommand("PING", []string{})
-	_ = router.routeIncomingCommand("PING", []string{})
+	_ = router.RouteIncomingCommand("PING", []string{}, nil)
+	_ = router.RouteIncomingCommand("PING", []string{}, nil)
 
-	_ = router.routeIncomingCommand("GET", []string{})
+	_ = router.RouteIncomingCommand("GET", []string{}, nil)
 
 	if tester.pingCount != 2 {
 		t.Errorf("Router did not route PING commands. Expected 2 but got %v", tester.pingCount)
@@ -37,7 +37,7 @@ func TestSuccessfulRouting(t *testing.T) {
 func TestFailsRoutingToUnknown(t *testing.T) {
 	router := NewRedisRouter()
 
-	err := router.routeIncomingCommand("UNKNOWN", []string{})
+	err := router.RouteIncomingCommand("UNKNOWN", []string{}, nil)
 
 	if err == nil {
 		t.Error("Expected error when routing unknown command. Router failed.")
@@ -54,10 +54,10 @@ func newRouterTester() *RedisRouterTester {
 	return &RedisRouterTester{0, 0}
 }
 
-func (routerTester *RedisRouterTester) handlePingCommand(command string, args []string) {
+func (routerTester *RedisRouterTester) handlePingCommand(args []string, responder Responder) {
 	routerTester.pingCount = routerTester.pingCount + 1
 }
 
-func (routerTester *RedisRouterTester) handleGetCommand(command string, args []string) {
+func (routerTester *RedisRouterTester) handleGetCommand(args []string, responder Responder) {
 	routerTester.getCount = routerTester.getCount + 1
 }

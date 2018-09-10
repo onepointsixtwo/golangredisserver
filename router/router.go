@@ -5,13 +5,17 @@ import (
 )
 
 // The router interface - allows other layers using router to be testable easily.
+type Responder interface {
+	SendResponse(response string)
+}
+
 type Router interface {
-	routeIncomingCommand(command string, args []string) error
+	RouteIncomingCommand(command string, args []string, responder Responder) error
 }
 
 // RedisRouter types. The router holds a list of handler functions mapped by string
 // which represents the command
-type RoutingHandler func(string, []string)
+type RoutingHandler func([]string, Responder)
 
 type RedisRouter struct {
 	handlers map[string]RoutingHandler
@@ -23,13 +27,13 @@ func NewRedisRouter() *RedisRouter {
 	return &RedisRouter{handlersMap}
 }
 
-func (router *RedisRouter) routeIncomingCommand(command string, args []string) error {
+func (router *RedisRouter) RouteIncomingCommand(command string, args []string, responder Responder) error {
 	handler, found := router.handlers[command]
 	if !found {
 		return fmt.Errorf("Unable to find handler for command %v in handlers:\n%v", command, router.handlers)
 	}
 
-	handler(command, args)
+	handler(args, responder)
 	return nil
 }
 

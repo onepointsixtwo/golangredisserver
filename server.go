@@ -5,6 +5,7 @@ import (
 	"github.com/onepointsixtwo/golangredisserver/clientconnection"
 	"github.com/onepointsixtwo/golangredisserver/router"
 	"net"
+	"sync"
 )
 
 const (
@@ -15,15 +16,20 @@ const (
 
 // Server struct
 
+//TODO: Changed my mind about making listening port configurable. It shouldn't even be created here.
+// The actual listener should be created externally and given to the struct as part of its initialiser.
+// No point in creating this without it and it makes this class testable!
 type RedisServer struct {
 	router                     router.Router
 	connectionCompletedChannel chan *clientconnection.ClientConnection
+	connectionsMutex           *sync.Mutex
+	connections                []*clientconnection.ClientConnection
 }
 
 // Initialisation
 
 func New() *RedisServer {
-	return &RedisServer{}
+	return &RedisServer{connectionsMutex: &sync.Mutex{}, connections: make([]*clientconnection.ClientConnection, 0)}
 }
 
 func (server *RedisServer) Init() {
@@ -44,7 +50,6 @@ func (server *RedisServer) Init() {
 
 func (server *RedisServer) Start() error {
 	// Create a listening socket
-	//TODO: Make the listening port configurable.
 	listeningSocket, err := net.Listen(TCP, ":6379")
 	if err != nil {
 		return fmt.Errorf("Error creating initial listening socket %v\n", err)
@@ -62,22 +67,47 @@ func (server *RedisServer) Start() error {
 
 		clientConn := clientconnection.New(connectionToClient, server.router, server.connectionCompletedChannel)
 		server.addClientConnection(clientConn)
-		clientConn.Start()
+		go clientConn.Start()
 	}
 }
 
 // Connections Completed Handling
 func (server *RedisServer) handleCompletedConnections() {
-	//TODO: listen on connectionCompletedChannel and remove completed connections
+	for completedClientConnection := range server.connectionCompletedChannel {
+		server.removeClientConnection(completedClientConnection)
+	}
 }
 
 // Client connection caching
+//TODO: pull this functionality out into another struct for this purpose.
 func (server *RedisServer) addClientConnection(connection *clientconnection.ClientConnection) {
-	//TODO:
+	server.connectionsMutex.Lock()
+	defer server.connectionsMutex.Unlock()
+
+	server.connections = append(server.connections, connection)
+
+	fmt.Printf("There are %v client connections\n", len(server.connections))
 }
 
 func (server *RedisServer) removeClientConnection(connection *clientconnection.ClientConnection) {
-	//TODO:
+	server.connectionsMutex.Lock()
+	defer server.connectionsMutex.Unlock()
+
+	var index = -1
+	for i, c := range server.connections {
+		if c == connection {
+			index = i
+			break
+		}
+	}
+
+	if index >= 0 {
+		connectionsLength := len(server.connections)
+		server.connections[index] = server.connections[connectionsLength-1]
+		server.connections = server.connections[:connectionsLength-1]
+	}
+
+	fmt.Printf("There are %v client connections\n", len(server.connections))
 }
 
 // Routing handlers

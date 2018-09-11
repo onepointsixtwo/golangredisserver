@@ -34,7 +34,6 @@ func (server *RedisServer) Init() {
 
 	// Only one handler for PING so far... more to come!
 	router.AddRedisCommandHandler(PING, server.PingHandler)
-
 	server.router = router
 
 	// Setup the channel for listening if connections to clients are completed
@@ -49,11 +48,15 @@ func (server *RedisServer) Start() error {
 		if err != nil {
 			return fmt.Errorf("Error accepting incoming connection %v\n", err)
 		}
-
-		clientConn := clientconnection.New(connectionToClient, server.router, server.connectionCompletedChannel)
-		server.connections.AddClientConnection(clientConn)
-		go clientConn.Start()
+		server.handleNewClient(connectionToClient)
 	}
+}
+
+// Starting connections
+func (server *RedisServer) handleNewClient(conn net.Conn) {
+	clientConn := clientconnection.New(connectionToClient, server.router, server.connectionCompletedChannel)
+	server.connections.AddClientConnection(clientConn)
+	go clientConn.Start()
 }
 
 // Connections Completed Handling

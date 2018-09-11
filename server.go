@@ -54,7 +54,7 @@ func (server *RedisServer) Start() error {
 
 // Starting connections
 func (server *RedisServer) handleNewClient(conn net.Conn) {
-	clientConn := clientconnection.New(connectionToClient, server.router, server.connectionCompletedChannel)
+	clientConn := clientconnection.New(conn, server.router, server.connectionCompletedChannel)
 	server.connections.AddClientConnection(clientConn)
 	go clientConn.Start()
 }

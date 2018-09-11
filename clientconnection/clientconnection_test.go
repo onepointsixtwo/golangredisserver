@@ -2,11 +2,8 @@ package clientconnection
 
 import (
 	"bytes"
-	"github.com/onepointsixtwo/golangredisserver/router"
-	"io"
-	"net"
+	"github.com/onepointsixtwo/golangredisserver/mocks"
 	"testing"
-	"time"
 )
 
 /*
@@ -25,18 +22,18 @@ func TestClientConnectionReadsFromConn(t *testing.T) {
 
 	sut.Start()
 
-	if len(mockRouter.commandsReceived) != 2 {
-		t.Errorf("Expected mock router to contain 2 received commands but contains %v", len(mockRouter.commandsReceived))
+	if len(mockRouter.CommandsReceived) != 2 {
+		t.Errorf("Expected mock router to contain 2 received commands but contains %v", len(mockRouter.CommandsReceived))
 	}
 
-	first := mockRouter.commandsReceived[0]
-	if first.command != "PING" || first.args[0] != "blah" {
-		t.Errorf("Expected mock router to have received the first command with type PING but was %v and argument blah but was %v", first.command, first.args[0])
+	first := mockRouter.CommandsReceived[0]
+	if first.Command != "PING" || first.Args[0] != "blah" {
+		t.Errorf("Expected mock router to have received the first command with type PING but was %v and argument blah but was %v", first.Command, first.Args[0])
 	}
 
-	second := mockRouter.commandsReceived[1]
-	if second.command != "PING" || len(second.args) > 0 {
-		t.Errorf("Expected mock router to have received the second command with type PING but was %v and with no arguments but had %v", second.command, len(second.args))
+	second := mockRouter.CommandsReceived[1]
+	if second.Command != "PING" || len(second.Args) > 0 {
+		t.Errorf("Expected mock router to have received the second command with type PING but was %v and with no arguments but had %v", second.Command, len(second.Args))
 	}
 }
 
@@ -49,11 +46,11 @@ func TestClientConnectionWritesToConn(t *testing.T) {
 	sut.Start()
 
 	response := "+PONG"
-	responder := mockRouter.commandsReceived[0].responder
+	responder := mockRouter.CommandsReceived[0].Responder
 	responder.SendResponse(response)
 
-	if connection.writeBuffer.String() != response {
-		t.Errorf("Error using responder to write back to connection - expected response to be written of %v but was %v", response, connection.writeBuffer.String())
+	if connection.WriteBuffer.String() != response {
+		t.Errorf("Error using responder to write back to connection - expected response to be written of %v but was %v", response, connection.WriteBuffer.String())
 	}
 }
 
@@ -65,7 +62,7 @@ func TestClientConnectionClosesConnectionWhenReadingComplete(t *testing.T) {
 
 	sut.Start()
 
-	if connection.closed == false {
+	if connection.Closed == false {
 		t.Error("Connection should be closed after processing is complete")
 	}
 }
@@ -86,116 +83,17 @@ func TestClientConnectionSendsCloseToChannelWhenComplete(t *testing.T) {
 }
 
 // Helpers - create the client and the mock dependencies needed for all tests
-func createClientConnectionAndDependencies(clientCommands string, finishedChannel chan *ClientConnection) (*ClientConnection, *MockConnection, *MockRouter) {
+func createClientConnectionAndDependencies(clientCommands string, finishedChannel chan *ClientConnection) (*ClientConnection, *mocks.MockConnection, *mocks.MockRouter) {
 	conn, router := createTestDependencies(clientCommands)
 	return New(conn, router, finishedChannel), conn, router
 }
 
-func createTestDependencies(clientCommands string) (*MockConnection, *MockRouter) {
+func createTestDependencies(clientCommands string) (*mocks.MockConnection, *mocks.MockRouter) {
 	// Create the mock connection
-	mockConnection := &MockConnection{closed: false, readString: clientCommands, writeBuffer: bytes.NewBufferString("")}
+	mockConnection := &mocks.MockConnection{Closed: false, ReadString: clientCommands, WriteBuffer: bytes.NewBufferString("")}
 
 	// Create the mock router
-	mockRouter := &MockRouter{make([]*ReceivedCommand, 0)}
+	mockRouter := &mocks.MockRouter{make([]*mocks.ReceivedCommand, 0)}
 
 	return mockConnection, mockRouter
-}
-
-// Mocking
-
-type MockConnection struct {
-	closed            bool
-	readDeadline      time.Time
-	writeDeadline     time.Time
-	readString        string
-	currentReadOffset int
-	writeBuffer       *bytes.Buffer
-}
-
-func (mockConn *MockConnection) Read(b []byte) (n int, err error) {
-	lengthOfGivenArray := len(b)
-
-	// Not hugely efficient to convert every time...
-	arrayFromReadString := []byte(mockConn.readString)
-	totalReadStringLength := len(arrayFromReadString)
-	remainingReadString := totalReadStringLength - mockConn.currentReadOffset
-
-	if remainingReadString <= 0 {
-		return 0, io.EOF
-	} else {
-		lengthToRead := remainingReadString
-		if lengthOfGivenArray < lengthToRead {
-			lengthToRead = lengthOfGivenArray
-		}
-
-		position := 0
-		for i := mockConn.currentReadOffset; i < (mockConn.currentReadOffset + lengthToRead); i++ {
-			b[position] = arrayFromReadString[i]
-			position++
-		}
-
-		mockConn.currentReadOffset += lengthToRead
-
-		return lengthToRead, nil
-	}
-}
-
-func (mockConn *MockConnection) Write(b []byte) (n int, err error) {
-	mockConn.writeBuffer.Write(b)
-	return len(b), nil
-}
-
-func (mockConn *MockConnection) Close() error {
-	mockConn.closed = true
-	return nil
-}
-
-func (mockConn *MockConnection) LocalAddr() net.Addr {
-	return &MockAddr{}
-}
-
-func (mockConn *MockConnection) RemoteAddr() net.Addr {
-	return &MockAddr{}
-}
-
-func (mockConn *MockConnection) SetDeadline(t time.Time) error {
-	mockConn.SetReadDeadline(t)
-	mockConn.SetWriteDeadline(t)
-	return nil
-}
-
-func (mockConn *MockConnection) SetReadDeadline(t time.Time) error {
-	mockConn.readDeadline = t
-	return nil
-}
-
-func (mockConn *MockConnection) SetWriteDeadline(t time.Time) error {
-	mockConn.writeDeadline = t
-	return nil
-}
-
-type MockAddr struct{}
-
-func (addr *MockAddr) Network() string {
-	return "tcp"
-}
-
-func (addr *MockAddr) String() string {
-	return "0.0.0.0"
-}
-
-type MockRouter struct {
-	commandsReceived []*ReceivedCommand
-}
-
-type ReceivedCommand struct {
-	command   string
-	args      []string
-	responder router.Responder
-}
-
-func (mockRouter *MockRouter) RouteIncomingCommand(command string, args []string, responder router.Responder) error {
-	receivedCommand := &ReceivedCommand{command, args, responder}
-	mockRouter.commandsReceived = append(mockRouter.commandsReceived, receivedCommand)
-	return nil
 }

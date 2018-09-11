@@ -1,7 +1,6 @@
 package clientconnection
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -19,8 +18,6 @@ func (store *Store) AddClientConnection(connection *ClientConnection) {
 	defer store.connectionsMutex.Unlock()
 
 	store.connections = append(store.connections, connection)
-
-	fmt.Printf("There are %v client connections in the store\n", len(store.connections))
 }
 
 func (store *Store) RemoveClientConnection(connection *ClientConnection) {
@@ -40,8 +37,6 @@ func (store *Store) RemoveClientConnection(connection *ClientConnection) {
 		store.connections[index] = store.connections[connectionsLength-1]
 		store.connections = store.connections[:connectionsLength-1]
 	}
-
-	fmt.Printf("There are %v client connections in the store\n", len(store.connections))
 }
 
 func (store *Store) GetClientConnectionsCount() int {

@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"strings"
 )
 
 // The router interface - allows other layers using router to be testable easily.
@@ -28,7 +29,7 @@ func NewRedisRouter() *RedisRouter {
 }
 
 func (router *RedisRouter) RouteIncomingCommand(command string, args []string, responder Responder) error {
-	handler, found := router.handlers[command]
+	handler, found := router.handlers[strings.ToUpper(command)]
 	if !found {
 		return fmt.Errorf("Unable to find handler for command %v in handlers:\n%v", command, router.handlers)
 	}
@@ -38,5 +39,5 @@ func (router *RedisRouter) RouteIncomingCommand(command string, args []string, r
 }
 
 func (router *RedisRouter) AddRedisCommandHandler(command string, handler RoutingHandler) {
-	router.handlers[command] = handler
+	router.handlers[strings.ToUpper(command)] = handler
 }

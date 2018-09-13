@@ -2,50 +2,25 @@ package mocks
 
 import (
 	"bytes"
-	"io"
 	"net"
 	"time"
 )
 
 type MockConnection struct {
-	Closed            bool
-	ReadDeadline      time.Time
-	WriteDeadline     time.Time
-	ReadString        string
-	currentReadOffset int
-	WriteBuffer       *bytes.Buffer
+	Closed        bool
+	ReadDeadline  time.Time
+	WriteDeadline time.Time
+	WriteBuffer   *bytes.Buffer
+	reader        *MockReader
 }
 
 func NewMockConnection(incomingReadString string) *MockConnection {
-	return &MockConnection{Closed: false, ReadString: incomingReadString, WriteBuffer: &bytes.Buffer{}}
+	reader := NewMockReader(incomingReadString)
+	return &MockConnection{Closed: false, WriteBuffer: &bytes.Buffer{}, reader: reader}
 }
 
 func (mockConn *MockConnection) Read(b []byte) (n int, err error) {
-	lengthOfGivenArray := len(b)
-
-	// Not hugely efficient to convert every time...
-	arrayFromReadString := []byte(mockConn.ReadString)
-	totalReadStringLength := len(arrayFromReadString)
-	remainingReadString := totalReadStringLength - mockConn.currentReadOffset
-
-	if remainingReadString <= 0 {
-		return 0, io.EOF
-	} else {
-		lengthToRead := remainingReadString
-		if lengthOfGivenArray < lengthToRead {
-			lengthToRead = lengthOfGivenArray
-		}
-
-		position := 0
-		for i := mockConn.currentReadOffset; i < (mockConn.currentReadOffset + lengthToRead); i++ {
-			b[position] = arrayFromReadString[i]
-			position++
-		}
-
-		mockConn.currentReadOffset += lengthToRead
-
-		return lengthToRead, nil
-	}
+	return mockConn.reader.Read(b)
 }
 
 func (mockConn *MockConnection) Write(b []byte) (n int, err error) {

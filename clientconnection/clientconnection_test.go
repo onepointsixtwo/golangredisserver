@@ -14,7 +14,7 @@ import (
 // Tests
 
 func TestClientConnectionReadsFromConn(t *testing.T) {
-	commands := "PING blah\r\nPING\r\n"
+	commands := "*2\r\n$4\r\nPING\r\n$4\r\nblah\r\n*1\r\n$4\r\nPING\r\n"
 	finishedChannel := make(chan *ClientConnection, 1)
 
 	sut, _, mockRouter := createClientConnectionAndDependencies(commands, finishedChannel)
@@ -37,7 +37,7 @@ func TestClientConnectionReadsFromConn(t *testing.T) {
 }
 
 func TestClientConnectionWritesToConn(t *testing.T) {
-	command := "PING\r\n"
+	command := "*1\r\n$4\r\nPING\r\n"
 	finishedChannel := make(chan *ClientConnection, 1)
 
 	sut, connection, mockRouter := createClientConnectionAndDependencies(command, finishedChannel)
@@ -54,7 +54,7 @@ func TestClientConnectionWritesToConn(t *testing.T) {
 }
 
 func TestClientConnectionClosesConnectionWhenReadingComplete(t *testing.T) {
-	command := "PING\r\n"
+	command := "*1\r\n$4\r\nPING\r\n"
 	finishedChannel := make(chan *ClientConnection, 1)
 
 	sut, connection, _ := createClientConnectionAndDependencies(command, finishedChannel)
@@ -67,7 +67,7 @@ func TestClientConnectionClosesConnectionWhenReadingComplete(t *testing.T) {
 }
 
 func TestClientConnectionSendsCloseToChannelWhenComplete(t *testing.T) {
-	command := "PING\r\n"
+	command := "*1\r\n$4\r\nPING\r\n"
 	finishedChannel := make(chan *ClientConnection)
 
 	sut, _, _ := createClientConnectionAndDependencies(command, finishedChannel)

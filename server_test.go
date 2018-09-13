@@ -10,7 +10,7 @@ import (
 // Tests
 
 func TestPingWithoutExtraData(t *testing.T) {
-	runServerTest("PING\r\n", nil, func(response string, sut *RedisServer) {
+	runServerTest("*1\r\n$4\r\nPING\r\n", nil, func(response string, sut *RedisServer) {
 		if response != "+PONG\r\n" {
 			t.Errorf("Response to PING should be +PONG\r\n but was %v", response)
 		}
@@ -18,7 +18,7 @@ func TestPingWithoutExtraData(t *testing.T) {
 }
 
 func TestPingWithExtraData(t *testing.T) {
-	runServerTest("PING extra-data\r\n", nil, func(response string, sut *RedisServer) {
+	runServerTest("*2\r\n$4\r\nPING\r\n$10\r\nextra-data\r\n", nil, func(response string, sut *RedisServer) {
 		if response != "$10\r\nextra-data\r\n" {
 			t.Errorf("Response to PING with arg 'extra-data' should be +extra-data\r\n but was %v", response)
 		}
@@ -26,7 +26,7 @@ func TestPingWithExtraData(t *testing.T) {
 }
 
 func TestSetValueWithGoodKeyAndValue(t *testing.T) {
-	runServerTest("SET mykey myvalue\r\n", nil, func(response string, sut *RedisServer) {
+	runServerTest("*3\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$7\r\nmyvalue\r\n", nil, func(response string, sut *RedisServer) {
 		value, _ := sut.dataStore.StringForKey("mykey")
 		if value != "myvalue" || response != "+OK\r\n" {
 			t.Errorf("Response to SET mykey myvalue should be +OK and value should be in store, but response is %v, value in store is %v", response, value)
@@ -38,7 +38,7 @@ func TestGetValueWithExistingKey(t *testing.T) {
 	store := keyvaluestore.New()
 	store.SetString("mykey", "myvalue")
 
-	runServerTest("GET mykey\r\n", store, func(response string, sut *RedisServer) {
+	runServerTest("*2\r\n$3\r\nGET\r\n$5\r\nmykey\r\n", store, func(response string, sut *RedisServer) {
 		expected := "$7\r\nmyvalue\r\n"
 		if response != expected {
 			t.Errorf("Response to GET mykey was expected to be %v but was %v", expected, response)

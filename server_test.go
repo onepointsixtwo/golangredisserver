@@ -40,11 +40,8 @@ func runServerTest(clientCommands string, response ServerResponse) {
 
 	go sut.Start()
 
-	// This feels a bit hacky or whatever, but it's basically waiting
-	// until the connection is read by the sut.Start() goro and then until
-	// it completes and the count drops back to zero.
-	// The connections store is thread safe so this shouldn't really cause
-	// any problems.
+	// Wait until the server closes the connection - then we're done with processing the single accept connection
+	// that mock listener will give back.
 	for listener.IsClosed() == false {
 		time.Sleep(200 * time.Millisecond)
 	}

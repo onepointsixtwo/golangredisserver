@@ -44,6 +44,7 @@ func CreateLineReader(reader io.Reader) func() (string, error) {
 		// When we have a line buffer, pop off the front of the line buffer until it's empty
 		line := lineBuffer[0]
 		lineBuffer = lineBuffer[1:]
+
 		return line, nil
 	}
 }

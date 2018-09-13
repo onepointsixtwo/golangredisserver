@@ -6,13 +6,13 @@ import (
 )
 
 func TestRespReaderCanReadSetCommandCorrectly(t *testing.T) {
-	reader := mocks.NewMockReader("*3\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$7\r\nmyvalue")
+	reader := mocks.NewMockReader("*3\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$7\r\nmyvalue\r\n")
 	respRead := CreateRespCommandReader(reader)
 
 	command, err := respRead()
 
 	if err != nil || command == nil {
-		t.Error("Command should not be nil and no error should occur parsing first RESP command")
+		t.Errorf("Command should not be nil and no error should occur parsing first RESP command %v", err)
 		return
 	}
 

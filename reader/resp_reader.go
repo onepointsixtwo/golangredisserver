@@ -2,6 +2,8 @@ package reader
 
 import (
 	"io"
+	"strconv"
+	"strings"
 )
 
 type RespCommand struct {
@@ -14,23 +16,53 @@ func CreateRespCommandReader(reader io.Reader) func() (*RespCommand, error) {
 	readLine := CreateLineReader(reader)
 
 	return func() (*RespCommand, error) {
-		/*
-			A RESP COMMAND:
 
-			*3
-			$3
-			SET
-			$5
-			mykey
-			$7
-			myvalue
+		// Get how many 'parts' there are to parse
+		partsString, err := readLine()
+		if err != nil {
+			return nil, err
+		}
 
-			Assume each newline represents \r\n (handled by line reader anyway)
+		parts, err2 := strconv.Atoi(strings.Replace(partsString, "*", "", 1))
+		if err2 != nil {
+			return nil, err2
+		}
 
-			Always starts with a header of *NUM where num is the number of 'parts' afterwards (note distinction between parts and lines here!)
+		// Parse the command string
+		command, err3 := readPart(readLine)
+		if err != nil {
+			return nil, err3
+		}
 
-			Each part then has to be parsed as an arg
-		*/
-		return nil, nil
+		// Parse the args
+		args := make([]string, 0)
+		for i := 0; i < (parts - 1); i++ {
+			arg, err4 := readPart(readLine)
+			if err4 != nil {
+				return nil, err4
+			}
+			args = append(args, arg)
+		}
+
+		return &RespCommand{Command: command, Args: args}, nil
 	}
+}
+
+func readPart(readLine func() (string, error)) (string, error) {
+	line, err := readLine()
+	if err != nil {
+		return "", err
+	}
+
+	strLen, err2 := strconv.Atoi(strings.Replace(line, "$", "", 1))
+	if err2 != nil {
+		return "", err2
+	}
+
+	valueLine, err3 := readLine()
+	if err3 != nil {
+		return "", err3
+	}
+
+	return valueLine[:strLen], nil
 }

@@ -14,6 +14,10 @@ type ReceivedCommand struct {
 	Responder router.Responder
 }
 
+func NewMockRouter() *MockRouter {
+	return &MockRouter{make([]*ReceivedCommand, 0)}
+}
+
 func (mockRouter *MockRouter) RouteIncomingCommand(command string, args []string, responder router.Responder) error {
 	receivedCommand := &ReceivedCommand{command, args, responder}
 	mockRouter.CommandsReceived = append(mockRouter.CommandsReceived, receivedCommand)

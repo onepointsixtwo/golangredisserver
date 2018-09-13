@@ -16,6 +16,10 @@ type MockConnection struct {
 	WriteBuffer       *bytes.Buffer
 }
 
+func NewMockConnection(incomingReadString string) *MockConnection {
+	return &MockConnection{Closed: false, ReadString: incomingReadString, WriteBuffer: &bytes.Buffer{}}
+}
+
 func (mockConn *MockConnection) Read(b []byte) (n int, err error) {
 	lengthOfGivenArray := len(b)
 
@@ -55,11 +59,11 @@ func (mockConn *MockConnection) Close() error {
 }
 
 func (mockConn *MockConnection) LocalAddr() net.Addr {
-	return &MockAddr{}
+	return NewMockAddr("tcp", "0.0.0.0")
 }
 
 func (mockConn *MockConnection) RemoteAddr() net.Addr {
-	return &MockAddr{}
+	return NewMockAddr("tcp", "0.0.0.0")
 }
 
 func (mockConn *MockConnection) SetDeadline(t time.Time) error {

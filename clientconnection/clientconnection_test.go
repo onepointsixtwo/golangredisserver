@@ -1,7 +1,6 @@
 package clientconnection
 
 import (
-	"bytes"
 	"github.com/onepointsixtwo/golangredisserver/mocks"
 	"testing"
 )
@@ -90,10 +89,10 @@ func createClientConnectionAndDependencies(clientCommands string, finishedChanne
 
 func createTestDependencies(clientCommands string) (*mocks.MockConnection, *mocks.MockRouter) {
 	// Create the mock connection
-	mockConnection := &mocks.MockConnection{Closed: false, ReadString: clientCommands, WriteBuffer: bytes.NewBufferString("")}
+	mockConnection := mocks.NewMockConnection(clientCommands)
 
 	// Create the mock router
-	mockRouter := &mocks.MockRouter{make([]*mocks.ReceivedCommand, 0)}
+	mockRouter := mocks.NewMockRouter()
 
 	return mockConnection, mockRouter
 }

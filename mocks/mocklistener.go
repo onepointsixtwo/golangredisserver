@@ -1,7 +1,6 @@
 package mocks
 
 import (
-	"bytes"
 	"io"
 	"net"
 )
@@ -20,7 +19,7 @@ func (listener *MockListener) Accept() (net.Conn, error) {
 	if !listener.connectionCreated {
 		listener.connectionCreated = true
 
-		mockConnection := &MockConnection{Closed: false, ReadString: listener.commands, WriteBuffer: bytes.NewBufferString("")}
+		mockConnection := NewMockConnection(listener.commands)
 		listener.Connection = mockConnection
 		return mockConnection, nil
 	}

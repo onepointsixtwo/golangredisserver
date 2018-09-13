@@ -1,7 +1,6 @@
 package golangredisserver
 
 import (
-	"fmt"
 	"github.com/onepointsixtwo/golangredisserver/mocks"
 	"testing"
 	"time"

@@ -91,9 +91,8 @@ func (server *RedisServer) pingHandler(args []string, responder router.Responder
 }
 
 func (server *RedisServer) getHandler(args []string, responder router.Responder) {
-	key := args[0]
-
-	if key != "" {
+	if len(args) > 0 {
+		key := args[0]
 		value, err := server.dataStore.StringForKey(key)
 		if err != nil {
 			responder.SendResponse(server.errorStringifyValue(fmt.Sprintf("value not found for key '%v'", key)))
@@ -106,10 +105,9 @@ func (server *RedisServer) getHandler(args []string, responder router.Responder)
 }
 
 func (server *RedisServer) setHandler(args []string, responder router.Responder) {
-	key := args[0]
-	value := args[1]
-
-	if key != "" && value != "" {
+	if len(args) > 1 {
+		key := args[0]
+		value := args[1]
 		server.dataStore.SetString(key, value)
 		responder.SendResponse(fmt.Sprintf("+%v%v", OK, CRLF))
 	} else {

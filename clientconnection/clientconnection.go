@@ -44,6 +44,24 @@ func (connection *ClientConnection) sendConnectionCloseToChannel() {
 	connection.finishedChannel <- connection
 }
 
+/*
+	UNFORTUNATELY this is going to have to change quite a bit, but thankfully this is something I've discovered relatively early.
+	The documentation for Redis is pretty confusing because 90% of it assumes usage of redis-cli but a small amount doesn't and
+	is actually to do with protocol. Having only just realised this, I'm in an annoying position now, of having to re-write what the parsing code looks like.
+	I assumed each command was like this "COMMAND arg1... \r\n". However, it's more like this (using SET as an example):
+	*3
+	$3
+	SET
+	$5
+	mykey
+	$7
+	myvalue
+
+	Where the command inputted to redis-cli will have been SET mykey myvalue.
+	This isn't so bad, but it certainly changes the way the parsing should work!
+
+*/
+
 // Keeps reading from the connection while there's still data to read, and handling
 // the incoming commands
 func (connection *ClientConnection) readAllFromConnection() {

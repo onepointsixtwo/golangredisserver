@@ -41,6 +41,8 @@ func (server *RedisServer) Init() {
 }
 
 func (server *RedisServer) Start() error {
+	defer server.listener.Close()
+
 	go server.handleCompletedConnections()
 
 	for {

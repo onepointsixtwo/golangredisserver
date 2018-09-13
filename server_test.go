@@ -1,8 +1,10 @@
 package golangredisserver
 
 import (
+	"fmt"
 	"github.com/onepointsixtwo/golangredisserver/mocks"
 	"testing"
+	"time"
 )
 
 // Tests
@@ -43,9 +45,8 @@ func runServerTest(clientCommands string, response ServerResponse) {
 	// it completes and the count drops back to zero.
 	// The connections store is thread safe so this shouldn't really cause
 	// any problems.
-	for sut.connections.GetClientConnectionsCount() == 0 {
-	}
-	for sut.connections.GetClientConnectionsCount() > 0 {
+	for listener.IsClosed() == false {
+		time.Sleep(200 * time.Millisecond)
 	}
 
 	output := listener.Connection.WriteBuffer.String()

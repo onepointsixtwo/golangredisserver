@@ -3,18 +3,22 @@ package clientconnection
 import (
 	"fmt"
 	"github.com/onepointsixtwo/golangredisserver/reader"
+	"github.com/onepointsixtwo/golangredisserver/responsewriter"
 	"github.com/onepointsixtwo/golangredisserver/router"
 	"net"
+	"time"
 )
 
 type ClientConnection struct {
 	connection      net.Conn
 	router          router.Router
 	finishedChannel chan<- *ClientConnection
+	timeout         time.Duration
 }
 
 func New(connection net.Conn, router router.Router, finished chan<- *ClientConnection) *ClientConnection {
-	return &ClientConnection{connection: connection, router: router, finishedChannel: finished}
+	timeout := time.Duration(5) * time.Second
+	return &ClientConnection{connection: connection, router: router, finishedChannel: finished, timeout: timeout}
 }
 
 func (connection *ClientConnection) Start() {
@@ -37,6 +41,8 @@ func (connection *ClientConnection) readAllFromConnection() {
 	readCommand := reader.CreateRespCommandReader(connection.connection)
 
 	for {
+		connection.connection.SetReadDeadline(time.Now().Add(connection.timeout))
+
 		command, err := readCommand()
 
 		if err != nil {
@@ -44,7 +50,12 @@ func (connection *ClientConnection) readAllFromConnection() {
 			return
 		}
 
-		connection.handleCommand(command)
+		err = connection.handleCommand(command)
+		if err != nil {
+			writer := responsewriter.New(connection)
+			writer.AddErrorString(fmt.Sprintf("unknown command: %v", command.Command))
+			_ = writer.WriteResponse()
+		}
 	}
 }
 
@@ -57,19 +68,17 @@ func (connection *ClientConnection) closeConnection() {
 }
 
 // Handles commands read from the incoming connection
-func (connection *ClientConnection) handleCommand(respCommand *reader.RespCommand) {
+func (connection *ClientConnection) handleCommand(respCommand *reader.RespCommand) error {
 	cmd := respCommand.Command
 	args := respCommand.Args
 
 	fmt.Printf("Handling command from client %v: %v (args: %v)\n", connection.connection.RemoteAddr(), cmd, args)
 
-	err := connection.router.RouteIncomingCommand(cmd, args, connection)
-	if err != nil {
-		fmt.Printf("Error routing incoming command %v", err)
-	}
+	return connection.router.RouteIncomingCommand(cmd, args, connection)
 }
 
 // Responder implementation - sends response to client from routed command
 func (connection *ClientConnection) SendResponse(response string) {
+	connection.connection.SetWriteDeadline(time.Now().Add(connection.timeout))
 	fmt.Fprintf(connection.connection, "%v", response)
 }

@@ -53,6 +53,23 @@ func TestGetValueWithExistingKey(t *testing.T) {
 	})
 }
 
+func TestDeleteValueForExistingKey(t *testing.T) {
+	store := keyvaluestore.New()
+	store.SetString("mykey", "myvalue")
+	store.SetString("mykey2", "myvalue2")
+
+	// Delete two keys which exist and attempt one which doesn't. Should give back '2'
+	// for those it successfully deleted.
+	command := createCommandString("DEL", "mykey", "mykey2", "mykey3")
+
+	runServerTest(command, store, func(response string, sut *RedisServer) {
+		expected := ":2\r\n"
+		if response != expected {
+			t.Errorf("Response to GET mykey was expected to be %v but was %v", expected, response)
+		}
+	})
+}
+
 // Command builder
 func createCommandString(command string, args ...string) string {
 	var buffer bytes.Buffer

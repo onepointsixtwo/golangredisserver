@@ -25,3 +25,18 @@ func TestKeyValueStoreReadKey(t *testing.T) {
 		t.Errorf("Value should be 'value1' but was %v", value)
 	}
 }
+
+func TestDeleteValueForKey(t *testing.T) {
+	store := New()
+
+	deleted := store.DeleteString("key")
+	if deleted {
+		t.Error("Should not have been able to delete key 'key' - it shouldn't exist!\n")
+	}
+
+	store.SetString("key2", "value")
+	deleted = store.DeleteString("key2")
+	if !deleted {
+		t.Error("Store should have deleted key2 successfully")
+	}
+}

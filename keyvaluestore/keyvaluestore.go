@@ -8,6 +8,7 @@ import (
 type Store interface {
 	StringForKey(key string) (string, error)
 	SetString(key, value string) error
+	DeleteString(key string) bool
 }
 
 type KeyValueStore struct {
@@ -38,4 +39,16 @@ func (store *KeyValueStore) SetString(key, value string) error {
 
 	store.stringStore[key] = value
 	return nil
+}
+
+func (store *KeyValueStore) DeleteString(key string) bool {
+	store.stringStoreLock.Lock()
+	defer store.stringStoreLock.Unlock()
+
+	_, ok := store.stringStore[key]
+	if ok {
+		delete(store.stringStore, key)
+	}
+
+	return ok
 }

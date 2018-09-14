@@ -14,6 +14,7 @@ const (
 	PONG = "PONG"
 	SET  = "SET"
 	GET  = "GET"
+	DEL  = "DEL"
 	OK   = "OK"
 	CRLF = "\r\n"
 )
@@ -43,6 +44,7 @@ func (server *RedisServer) Init() {
 	router.AddRedisCommandHandler(PING, server.pingHandler)
 	router.AddRedisCommandHandler(GET, server.getHandler)
 	router.AddRedisCommandHandler(SET, server.setHandler)
+	router.AddRedisCommandHandler(DEL, server.deleteHandler)
 
 	server.router = router
 
@@ -117,6 +119,22 @@ func (server *RedisServer) setHandler(args []string, responder router.Responder)
 	} else {
 		writer.AddErrorString("wrong number of arguments for 'set' command")
 	}
+	server.writeResponse(writer)
+}
+
+func (server *RedisServer) deleteHandler(args []string, responder router.Responder) {
+	writer := responsewriter.New(responder)
+
+	deleted := 0
+	for i := 0; i < len(args); i++ {
+		key := args[i]
+		success := server.dataStore.DeleteString(key)
+		if success {
+			deleted++
+		}
+	}
+
+	writer.AddInt(deleted)
 	server.writeResponse(writer)
 }
 

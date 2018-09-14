@@ -9,8 +9,10 @@ NC='\033[0m'
 trap 'printf "${RED}Running redis server interrupted! ${NC}\n"'\
 	HUP INT QUIT PIPE TERM
 
-# change to the directory for the main.go file
-cd golangredisserver
 printf "${GREEN}Running redis server${NC}\n"
-go run main.go
+
+docker build -t golang-redis-server .
+
+sudo docker run -p 6379:6379/tcp golang-redis-server
+
 

@@ -12,7 +12,7 @@ import (
 // Tests
 
 func TestPingWithoutExtraData(t *testing.T) {
-	command := createCommandString("PING")
+	command := createCommandString(PING)
 	runServerTest(command, nil, func(response string, sut *RedisServer) {
 		if response != "+PONG\r\n" {
 			t.Errorf("Response to PING should be +PONG\r\n but was %v", response)
@@ -21,7 +21,7 @@ func TestPingWithoutExtraData(t *testing.T) {
 }
 
 func TestPingWithExtraData(t *testing.T) {
-	command := createCommandString("PING", "extra-data")
+	command := createCommandString(PING, "extra-data")
 	runServerTest(command, nil, func(response string, sut *RedisServer) {
 		if response != "$10\r\nextra-data\r\n" {
 			t.Errorf("Response to PING with arg 'extra-data' should be +extra-data\r\n but was %v", response)
@@ -30,7 +30,7 @@ func TestPingWithExtraData(t *testing.T) {
 }
 
 func TestSetValueWithGoodKeyAndValue(t *testing.T) {
-	command := createCommandString("SET", "mykey", "myvalue")
+	command := createCommandString(SET, "mykey", "myvalue")
 	runServerTest(command, nil, func(response string, sut *RedisServer) {
 		value, _ := sut.dataStore.StringForKey("mykey")
 		if value != "myvalue" || response != "+OK\r\n" {
@@ -43,7 +43,7 @@ func TestGetValueWithExistingKey(t *testing.T) {
 	store := keyvaluestore.New()
 	store.SetString("mykey", "myvalue")
 
-	command := createCommandString("GET", "mykey")
+	command := createCommandString(GET, "mykey")
 
 	runServerTest(command, store, func(response string, sut *RedisServer) {
 		expected := "$7\r\nmyvalue\r\n"
@@ -60,12 +60,29 @@ func TestDeleteValueForExistingKey(t *testing.T) {
 
 	// Delete two keys which exist and attempt one which doesn't. Should give back '2'
 	// for those it successfully deleted.
-	command := createCommandString("DEL", "mykey", "mykey2", "mykey3")
+	command := createCommandString(DEL, "mykey", "mykey2", "mykey3")
 
 	runServerTest(command, store, func(response string, sut *RedisServer) {
 		expected := ":2\r\n"
 		if response != expected {
-			t.Errorf("Response to GET mykey was expected to be %v but was %v", expected, response)
+			t.Errorf("Response to DEL mykey, mykey2, mykey3 was expected to be %v but was %v", expected, response)
+		}
+	})
+}
+
+func TestCheckIfKeyExists(t *testing.T) {
+	store := keyvaluestore.New()
+	store.SetString("mykey", "myvalue")
+	store.SetString("mykey2", "myvalue2")
+
+	// Delete two keys which exist and attempt one which doesn't. Should give back '2'
+	// for those it successfully deleted.
+	command := createCommandString(EXISTS, "mykey", "mykey2", "mykey3")
+
+	runServerTest(command, store, func(response string, sut *RedisServer) {
+		expected := ":2\r\n"
+		if response != expected {
+			t.Errorf("Response to EXISTS mykey, mykey2, mykey3 was expected to be %v but was %v", expected, response)
 		}
 	})
 }

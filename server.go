@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	PING = "PING"
-	PONG = "PONG"
-	SET  = "SET"
-	GET  = "GET"
-	DEL  = "DEL"
-	OK   = "OK"
-	CRLF = "\r\n"
+	PING   = "PING"
+	PONG   = "PONG"
+	SET    = "SET"
+	GET    = "GET"
+	DEL    = "DEL"
+	EXISTS = "EXISTS"
+	OK     = "OK"
+	CRLF   = "\r\n"
 )
 
 // Server struct
@@ -45,6 +46,7 @@ func (server *RedisServer) Init() {
 	router.AddRedisCommandHandler(GET, server.getHandler)
 	router.AddRedisCommandHandler(SET, server.setHandler)
 	router.AddRedisCommandHandler(DEL, server.deleteHandler)
+	router.AddRedisCommandHandler(EXISTS, server.existsHandler)
 
 	server.router = router
 
@@ -135,6 +137,22 @@ func (server *RedisServer) deleteHandler(args []string, responder router.Respond
 	}
 
 	writer.AddInt(deleted)
+	server.writeResponse(writer)
+}
+
+func (server *RedisServer) existsHandler(args []string, responder router.Responder) {
+	writer := responsewriter.New(responder)
+
+	exists := 0
+	for i := 0; i < len(args); i++ {
+		key := args[i]
+		_, err := server.dataStore.StringForKey(key)
+		if err == nil {
+			exists++
+		}
+	}
+
+	writer.AddInt(exists)
 	server.writeResponse(writer)
 }
 

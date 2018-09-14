@@ -58,6 +58,7 @@ func readPart(readLine func() (string, error)) (string, error) {
 		return "", err
 	}
 
+	// If the prefix is '$' it's a bulk string split over 2 lines, but if it's another then it's all on one line.
 	if strings.HasPrefix(line, "$") {
 		strLen, err2 := strconv.Atoi(strings.Replace(line, "$", "", 1))
 		if err2 != nil {

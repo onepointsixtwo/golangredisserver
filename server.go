@@ -7,6 +7,7 @@ import (
 	"github.com/onepointsixtwo/golangredisserver/responsewriter"
 	"github.com/onepointsixtwo/golangredisserver/router"
 	"net"
+	"time"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 	GET    = "GET"
 	DEL    = "DEL"
 	EXISTS = "EXISTS"
+	TIME   = "TIME"
 	OK     = "OK"
 	CRLF   = "\r\n"
 )
@@ -47,6 +49,7 @@ func (server *RedisServer) Init() {
 	router.AddRedisCommandHandler(SET, server.setHandler)
 	router.AddRedisCommandHandler(DEL, server.deleteHandler)
 	router.AddRedisCommandHandler(EXISTS, server.existsHandler)
+	router.AddRedisCommandHandler(TIME, server.timeHandler)
 
 	server.router = router
 
@@ -153,6 +156,24 @@ func (server *RedisServer) existsHandler(args []string, responder router.Respond
 	}
 
 	writer.AddInt(exists)
+	server.writeResponse(writer)
+}
+
+func (server *RedisServer) timeHandler(args []string, responder router.Responder) {
+	writer := responsewriter.New(responder)
+
+	currentTime := time.Now()
+
+	//Get the seconds
+	seconds := currentTime.Unix()
+	writer.AddBulkString(fmt.Sprintf("%v", seconds))
+
+	//Get the microseconds
+	nanoseconds := currentTime.UnixNano()
+	nanosecondsRemainder := nanoseconds % (seconds * int64(time.Nanosecond))
+	milliseconds := nanosecondsRemainder / 1000
+	writer.AddBulkString(fmt.Sprintf("%v", milliseconds))
+
 	server.writeResponse(writer)
 }
 

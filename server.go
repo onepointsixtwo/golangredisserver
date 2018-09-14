@@ -15,6 +15,7 @@ const (
 	PONG   = "PONG"
 	SET    = "SET"
 	GET    = "GET"
+	GETSET = "GETSET"
 	DEL    = "DEL"
 	EXISTS = "EXISTS"
 	TIME   = "TIME"
@@ -47,6 +48,7 @@ func (server *RedisServer) Init() {
 	router.AddRedisCommandHandler(PING, server.pingHandler)
 	router.AddRedisCommandHandler(GET, server.getHandler)
 	router.AddRedisCommandHandler(SET, server.setHandler)
+	router.AddRedisCommandHandler(GETSET, server.getSetHandler)
 	router.AddRedisCommandHandler(DEL, server.deleteHandler)
 	router.AddRedisCommandHandler(EXISTS, server.existsHandler)
 	router.AddRedisCommandHandler(TIME, server.timeHandler)
@@ -121,6 +123,22 @@ func (server *RedisServer) setHandler(args []string, responder router.Responder)
 		server.dataStore.SetString(key, value)
 
 		writer.AddSimpleString(OK)
+	} else {
+		writer.AddErrorString("wrong number of arguments for 'set' command")
+	}
+	server.writeResponse(writer)
+}
+
+func (server *RedisServer) getSetHandler(args []string, responder router.Responder) {
+	writer := responsewriter.New(responder)
+	if len(args) > 1 {
+		key := args[0]
+		value := args[1]
+
+		existingValue, _ := server.dataStore.StringForKey(key)
+		server.dataStore.SetString(key, value)
+
+		writer.AddBulkString(existingValue)
 	} else {
 		writer.AddErrorString("wrong number of arguments for 'set' command")
 	}

@@ -53,6 +53,21 @@ func TestGetValueWithExistingKey(t *testing.T) {
 	})
 }
 
+func TestGetSetValueWithExistingKey(t *testing.T) {
+	store := keyvaluestore.New()
+	store.SetString("mykey", "myvalue")
+
+	command := createCommandString(GETSET, "mykey", "newvalue")
+
+	runServerTest(command, store, func(response string, sut *RedisServer) {
+		expected := "$7\r\nmyvalue\r\n"
+		newValue, _ := store.StringForKey("mykey")
+		if response != expected || newValue != "newvalue" {
+			t.Errorf("Response to GETSET mykey was expected to be %v but was %v, and newvalue was %v", expected, response, newValue)
+		}
+	})
+}
+
 func TestDeleteValueForExistingKey(t *testing.T) {
 	store := keyvaluestore.New()
 	store.SetString("mykey", "myvalue")

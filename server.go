@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"github.com/onepointsixtwo/golangredisserver/clientconnection"
 	"github.com/onepointsixtwo/golangredisserver/connection"
+	"github.com/onepointsixtwo/golangredisserver/expiry"
 	"github.com/onepointsixtwo/golangredisserver/keyvaluestore"
 	"github.com/onepointsixtwo/golangredisserver/router"
-	"github.com/onepointsixtwo/golangredisserver/ttltimer"
 	"net"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -37,18 +36,19 @@ type RedisServer struct {
 	connectionCompletedChannel chan *clientconnection.ClientConnection
 	connections                *clientconnection.Store
 	dataStore                  keyvaluestore.Store
-	timersMap                  map[string]*ttltimer.TTLTimer
-	timersMapLock              *sync.Mutex
+	expiryHandler              *expiry.Handler
 }
 
 // Initialisation
 
 func New(listener net.Listener) *RedisServer {
+	dataStore := keyvaluestore.New()
+	expiryHandler := expiry.New(dataStore)
+
 	return &RedisServer{listener: listener,
 		connections:   clientconnection.NewStore(),
 		dataStore:     keyvaluestore.New(),
-		timersMap:     make(map[string]*ttltimer.TTLTimer),
-		timersMapLock: &sync.Mutex{}}
+		expiryHandler: expiryHandler}
 }
 
 func (server *RedisServer) Init() {
@@ -101,6 +101,10 @@ func (server *RedisServer) handleCompletedConnections() {
 }
 
 // Routing handlers
+// TODO: Next piece of refactoring should be to move these in some way into their own packages.
+// possibly make a factory for each 'kind' (so in the case of the below, string types management)
+// and have handler functions which create instances of handler structs for different types (?)
+// Also, maybe even before that, refactor the timing stuff into its own package (TTL, EXPIRY etc.)
 
 func (server *RedisServer) pingHandler(args []string, connection connection.Connection) {
 	writer := connection.CreateResponseWriter()
@@ -166,7 +170,7 @@ func (server *RedisServer) deleteHandler(args []string, connection connection.Co
 		key := args[i]
 		success := server.dataStore.DeleteString(key)
 		if success {
-			server.cancelTimerForKeyIfExists(key)
+			server.expiryHandler.CancelTimerForKeyIfExists(key)
 			deleted++
 		}
 	}
@@ -223,7 +227,7 @@ func (server *RedisServer) expireHandler(args []string, connection connection.Co
 			if err != nil {
 				writer.AddErrorString("cannot set expiry for non existent key!")
 			} else {
-				server.expireKey(key, expirySeconds)
+				server.expiryHandler.ExpireKeyAfterSeconds(key, expirySeconds)
 				writer.AddSimpleString(OK)
 			}
 		}
@@ -237,7 +241,7 @@ func (server *RedisServer) ttlHandler(args []string, connection connection.Conne
 	writer := connection.CreateResponseWriter()
 	if len(args) == 1 {
 		key := args[0]
-		ttl, err := server.remainingExpiryTTLForKey(key)
+		ttl, err := server.expiryHandler.RemainingExpiryTTLForKey(key)
 		if err != nil {
 			writer.AddErrorString(fmt.Sprintf("no expiry time exists for key %v", key))
 		} else {
@@ -247,66 +251,6 @@ func (server *RedisServer) ttlHandler(args []string, connection connection.Conne
 		writer.AddErrorString(fmt.Sprintf("incorrect number of args for TTL - expected 1 but got %v", len(args)))
 	}
 	server.writeResponse(writer)
-}
-
-// Timing Handlers (To be moved to its own separated structure to handle expiry)
-func (server *RedisServer) expireKey(key string, afterSeconds int) {
-	// Cancel existing timer
-	server.cancelTimerForKeyIfExists(key)
-
-	// Start new timer
-	timer := ttltimer.New(afterSeconds)
-	server.storeTimerForKey(timer, key)
-	go server.runTimer(timer, key)
-}
-
-func (server *RedisServer) runTimer(timer *ttltimer.TTLTimer, key string) {
-	<-timer.GetTimerChannel()
-
-	server.removeTimerForKey(timer, key)
-
-	fmt.Printf("Deleting expiring key: %v\n", key)
-	server.dataStore.DeleteString(key)
-}
-
-func (server *RedisServer) storeTimerForKey(timer *ttltimer.TTLTimer, key string) {
-	server.timersMapLock.Lock()
-	defer server.timersMapLock.Unlock()
-
-	server.timersMap[key] = timer
-}
-
-func (server *RedisServer) removeTimerForKey(timer *ttltimer.TTLTimer, key string) {
-	server.timersMapLock.Lock()
-	defer server.timersMapLock.Unlock()
-
-	_, exists := server.timersMap[key]
-	if exists {
-		delete(server.timersMap, key)
-	}
-}
-
-func (server *RedisServer) cancelTimerForKeyIfExists(key string) {
-	server.timersMapLock.Lock()
-	defer server.timersMapLock.Unlock()
-
-	timer, exists := server.timersMap[key]
-	if exists {
-		timer.Stop()
-		delete(server.timersMap, key)
-	}
-}
-
-func (server *RedisServer) remainingExpiryTTLForKey(key string) (int, error) {
-	server.timersMapLock.Lock()
-	defer server.timersMapLock.Unlock()
-
-	timer, exists := server.timersMap[key]
-	if exists {
-		return timer.RemainingTTL(), nil
-	}
-
-	return 0, fmt.Errorf("No timer exists for key %v", key)
 }
 
 // Response helpers

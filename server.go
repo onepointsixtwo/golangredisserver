@@ -6,6 +6,7 @@ import (
 	"github.com/onepointsixtwo/golangredisserver/keyvaluestore"
 	"github.com/onepointsixtwo/golangredisserver/responsewriter"
 	"github.com/onepointsixtwo/golangredisserver/router"
+	"github.com/onepointsixtwo/golangredisserver/ttltimer"
 	"net"
 	"strconv"
 	"sync"
@@ -22,6 +23,7 @@ const (
 	EXISTS = "EXISTS"
 	TIME   = "TIME"
 	EXPIRE = "EXPIRE"
+	TTL    = "TTL"
 	OK     = "OK"
 	CRLF   = "\r\n"
 )
@@ -35,7 +37,7 @@ type RedisServer struct {
 	connectionCompletedChannel chan *clientconnection.ClientConnection
 	connections                *clientconnection.Store
 	dataStore                  keyvaluestore.Store
-	timersMap                  map[string]*time.Timer
+	timersMap                  map[string]*ttltimer.TTLTimer
 	timersMapLock              *sync.Mutex
 }
 
@@ -45,7 +47,7 @@ func New(listener net.Listener) *RedisServer {
 	return &RedisServer{listener: listener,
 		connections:   clientconnection.NewStore(),
 		dataStore:     keyvaluestore.New(),
-		timersMap:     make(map[string]*time.Timer),
+		timersMap:     make(map[string]*ttltimer.TTLTimer),
 		timersMapLock: &sync.Mutex{}}
 }
 
@@ -62,6 +64,7 @@ func (server *RedisServer) Init() {
 	router.AddRedisCommandHandler(EXISTS, server.existsHandler)
 	router.AddRedisCommandHandler(TIME, server.timeHandler)
 	router.AddRedisCommandHandler(EXPIRE, server.expireHandler)
+	router.AddRedisCommandHandler(TTL, server.ttlHandler)
 
 	server.router = router
 
@@ -230,19 +233,35 @@ func (server *RedisServer) expireHandler(args []string, responder router.Respond
 	server.writeResponse(writer)
 }
 
+func (server *RedisServer) ttlHandler(args []string, responder router.Responder) {
+	writer := responsewriter.New(responder)
+	if len(args) == 1 {
+		key := args[0]
+		ttl, err := server.remainingExpiryTTLForKey(key)
+		if err != nil {
+			writer.AddErrorString(fmt.Sprintf("no expiry time exists for key %v", key))
+		} else {
+			writer.AddInt(ttl)
+		}
+	} else {
+		writer.AddErrorString(fmt.Sprintf("incorrect number of args for TTL - expected 1 but got %v", len(args)))
+	}
+	server.writeResponse(writer)
+}
+
 // Timing Handlers (To be moved to its own separated structure to handle expiry)
 func (server *RedisServer) expireKey(key string, afterSeconds int) {
 	// Cancel existing timer
 	server.cancelTimerForKeyIfExists(key)
 
 	// Start new timer
-	timer := time.NewTimer(time.Duration(afterSeconds) * time.Second)
+	timer := ttltimer.New(afterSeconds)
 	server.storeTimerForKey(timer, key)
 	go server.runTimer(timer, key)
 }
 
-func (server *RedisServer) runTimer(timer *time.Timer, key string) {
-	<-timer.C
+func (server *RedisServer) runTimer(timer *ttltimer.TTLTimer, key string) {
+	<-timer.GetTimerChannel()
 
 	server.removeTimerForKey(timer, key)
 
@@ -250,14 +269,14 @@ func (server *RedisServer) runTimer(timer *time.Timer, key string) {
 	server.dataStore.DeleteString(key)
 }
 
-func (server *RedisServer) storeTimerForKey(timer *time.Timer, key string) {
+func (server *RedisServer) storeTimerForKey(timer *ttltimer.TTLTimer, key string) {
 	server.timersMapLock.Lock()
 	defer server.timersMapLock.Unlock()
 
 	server.timersMap[key] = timer
 }
 
-func (server *RedisServer) removeTimerForKey(timer *time.Timer, key string) {
+func (server *RedisServer) removeTimerForKey(timer *ttltimer.TTLTimer, key string) {
 	server.timersMapLock.Lock()
 	defer server.timersMapLock.Unlock()
 
@@ -273,12 +292,21 @@ func (server *RedisServer) cancelTimerForKeyIfExists(key string) {
 
 	timer, exists := server.timersMap[key]
 	if exists {
-		stopped := timer.Stop()
-		if !stopped {
-			fmt.Println("Failed to stop timer!")
-		}
+		timer.Stop()
 		delete(server.timersMap, key)
 	}
+}
+
+func (server *RedisServer) remainingExpiryTTLForKey(key string) (int, error) {
+	server.timersMapLock.Lock()
+	defer server.timersMapLock.Unlock()
+
+	timer, exists := server.timersMap[key]
+	if exists {
+		return timer.RemainingTTL(), nil
+	}
+
+	return 0, fmt.Errorf("No timer exists for key %v", key)
 }
 
 // Response helpers

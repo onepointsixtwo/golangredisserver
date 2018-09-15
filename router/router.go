@@ -2,21 +2,18 @@ package router
 
 import (
 	"fmt"
+	"github.com/onepointsixtwo/golangredisserver/connection"
 	"strings"
 )
 
 // The router interface - allows other layers using router to be testable easily.
-type Responder interface {
-	SendResponse(response string)
-}
-
 type Router interface {
-	RouteIncomingCommand(command string, args []string, responder Responder) error
+	RouteIncomingCommand(command string, args []string, connection connection.Connection) error
 }
 
 // RedisRouter types. The router holds a list of handler functions mapped by string
 // which represents the command
-type RoutingHandler func([]string, Responder)
+type RoutingHandler func([]string, connection.Connection)
 
 type RedisRouter struct {
 	handlers map[string]RoutingHandler
@@ -28,13 +25,13 @@ func NewRedisRouter() *RedisRouter {
 	return &RedisRouter{handlersMap}
 }
 
-func (router *RedisRouter) RouteIncomingCommand(command string, args []string, responder Responder) error {
+func (router *RedisRouter) RouteIncomingCommand(command string, args []string, connection connection.Connection) error {
 	handler, found := router.handlers[strings.ToUpper(command)]
 	if !found {
 		return fmt.Errorf("Unable to find handler for command %v in handlers:\n%v", command, router.handlers)
 	}
 
-	handler(args, responder)
+	handler(args, connection)
 	return nil
 }
 

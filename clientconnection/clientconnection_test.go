@@ -45,8 +45,8 @@ func TestClientConnectionWritesToConn(t *testing.T) {
 	sut.Start()
 
 	response := "+PONG"
-	responder := mockRouter.CommandsReceived[0].Responder
-	responder.SendResponse(response)
+	con := mockRouter.CommandsReceived[0].Connection
+	con.SendResponse(response)
 
 	if connection.WriteBuffer.String() != response {
 		t.Errorf("Error using responder to write back to connection - expected response to be written of %v but was %v", response, connection.WriteBuffer.String())

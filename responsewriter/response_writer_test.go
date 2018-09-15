@@ -1,6 +1,7 @@
 package responsewriter
 
 import (
+	"github.com/onepointsixtwo/golangredisserver/connection"
 	"testing"
 )
 
@@ -106,20 +107,24 @@ func TestWritingSingleElementArrayResponse(t *testing.T) {
 }
 
 // Helpers
-func getSut() (*ResponseWriter, *mockResponder) {
-	responder := newMockResponder()
+func getSut() (*ResponseWriter, *mockConnection) {
+	responder := newMockConnection()
 	return New(responder), responder
 }
 
 // Mock responder
-type mockResponder struct {
+type mockConnection struct {
 	responseWritten string
 }
 
-func newMockResponder() *mockResponder {
-	return &mockResponder{}
+func newMockConnection() *mockConnection {
+	return &mockConnection{}
 }
 
-func (responder *mockResponder) SendResponse(response string) {
+func (responder *mockConnection) SendResponse(response string) {
 	responder.responseWritten = response
+}
+
+func (connection *mockConnection) CreateResponseWriter() connection.ConnectionResponseWriter {
+	return nil
 }

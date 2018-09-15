@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/onepointsixtwo/golangredisserver/connection"
 	"testing"
 )
 
@@ -54,10 +55,10 @@ func newRouterTester() *RedisRouterTester {
 	return &RedisRouterTester{0, 0}
 }
 
-func (routerTester *RedisRouterTester) handlePingCommand(args []string, responder Responder) {
+func (routerTester *RedisRouterTester) handlePingCommand(args []string, connection connection.Connection) {
 	routerTester.pingCount = routerTester.pingCount + 1
 }
 
-func (routerTester *RedisRouterTester) handleGetCommand(args []string, responder Responder) {
+func (routerTester *RedisRouterTester) handleGetCommand(args []string, connection connection.Connection) {
 	routerTester.getCount = routerTester.getCount + 1
 }

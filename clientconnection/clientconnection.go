@@ -2,6 +2,7 @@ package clientconnection
 
 import (
 	"fmt"
+	"github.com/onepointsixtwo/golangredisserver/connection"
 	"github.com/onepointsixtwo/golangredisserver/reader"
 	"github.com/onepointsixtwo/golangredisserver/responsewriter"
 	"github.com/onepointsixtwo/golangredisserver/router"
@@ -77,8 +78,13 @@ func (connection *ClientConnection) handleCommand(respCommand *reader.RespComman
 	return connection.router.RouteIncomingCommand(cmd, args, connection)
 }
 
-// Responder implementation - sends response to client from routed command
+// connection.Connection implementation
+
 func (connection *ClientConnection) SendResponse(response string) {
 	connection.connection.SetWriteDeadline(time.Now().Add(connection.timeout))
 	fmt.Fprintf(connection.connection, "%v", response)
+}
+
+func (connection *ClientConnection) CreateResponseWriter() connection.ConnectionResponseWriter {
+	return responsewriter.New(connection)
 }

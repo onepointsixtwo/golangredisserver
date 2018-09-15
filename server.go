@@ -3,8 +3,8 @@ package golangredisserver
 import (
 	"fmt"
 	"github.com/onepointsixtwo/golangredisserver/clientconnection"
+	"github.com/onepointsixtwo/golangredisserver/connection"
 	"github.com/onepointsixtwo/golangredisserver/keyvaluestore"
-	"github.com/onepointsixtwo/golangredisserver/responsewriter"
 	"github.com/onepointsixtwo/golangredisserver/router"
 	"github.com/onepointsixtwo/golangredisserver/ttltimer"
 	"net"
@@ -102,8 +102,8 @@ func (server *RedisServer) handleCompletedConnections() {
 
 // Routing handlers
 
-func (server *RedisServer) pingHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) pingHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 	if len(args) > 0 {
 		writer.AddBulkString(args[0])
 	} else {
@@ -112,8 +112,8 @@ func (server *RedisServer) pingHandler(args []string, responder router.Responder
 	server.writeResponse(writer)
 }
 
-func (server *RedisServer) getHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) getHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 	if len(args) > 0 {
 		key := args[0]
 		value, err := server.dataStore.StringForKey(key)
@@ -128,8 +128,8 @@ func (server *RedisServer) getHandler(args []string, responder router.Responder)
 	server.writeResponse(writer)
 }
 
-func (server *RedisServer) setHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) setHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 	if len(args) > 1 {
 		key := args[0]
 		value := args[1]
@@ -142,8 +142,8 @@ func (server *RedisServer) setHandler(args []string, responder router.Responder)
 	server.writeResponse(writer)
 }
 
-func (server *RedisServer) getSetHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) getSetHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 	if len(args) > 1 {
 		key := args[0]
 		value := args[1]
@@ -158,8 +158,8 @@ func (server *RedisServer) getSetHandler(args []string, responder router.Respond
 	server.writeResponse(writer)
 }
 
-func (server *RedisServer) deleteHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) deleteHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 
 	deleted := 0
 	for i := 0; i < len(args); i++ {
@@ -175,8 +175,8 @@ func (server *RedisServer) deleteHandler(args []string, responder router.Respond
 	server.writeResponse(writer)
 }
 
-func (server *RedisServer) existsHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) existsHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 
 	exists := 0
 	for i := 0; i < len(args); i++ {
@@ -191,8 +191,8 @@ func (server *RedisServer) existsHandler(args []string, responder router.Respond
 	server.writeResponse(writer)
 }
 
-func (server *RedisServer) timeHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) timeHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 
 	currentTime := time.Now()
 
@@ -209,8 +209,8 @@ func (server *RedisServer) timeHandler(args []string, responder router.Responder
 	server.writeResponse(writer)
 }
 
-func (server *RedisServer) expireHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) expireHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 	if len(args) == 2 {
 		key := args[0]
 		expirySecondsString := args[1]
@@ -233,8 +233,8 @@ func (server *RedisServer) expireHandler(args []string, responder router.Respond
 	server.writeResponse(writer)
 }
 
-func (server *RedisServer) ttlHandler(args []string, responder router.Responder) {
-	writer := responsewriter.New(responder)
+func (server *RedisServer) ttlHandler(args []string, connection connection.Connection) {
+	writer := connection.CreateResponseWriter()
 	if len(args) == 1 {
 		key := args[0]
 		ttl, err := server.remainingExpiryTTLForKey(key)
@@ -311,7 +311,7 @@ func (server *RedisServer) remainingExpiryTTLForKey(key string) (int, error) {
 
 // Response helpers
 
-func (server *RedisServer) writeResponse(writer *responsewriter.ResponseWriter) {
+func (server *RedisServer) writeResponse(writer connection.ConnectionResponseWriter) {
 	err := writer.WriteResponse()
 	if err != nil {
 		fmt.Printf("Error writing response: %v", err)

@@ -246,7 +246,7 @@ func (server *RedisServer) runTimer(timer *time.Timer, key string) {
 
 	server.removeTimerForKey(timer, key)
 
-	fmt.Printf("Deleting expiring key: %v", key)
+	fmt.Printf("Deleting expiring key: %v\n", key)
 	server.dataStore.DeleteString(key)
 }
 

@@ -7,6 +7,8 @@ import (
 	"github.com/onepointsixtwo/golangredisserver/responsewriter"
 	"github.com/onepointsixtwo/golangredisserver/router"
 	"net"
+	"strconv"
+	"sync"
 	"time"
 )
 
@@ -19,6 +21,7 @@ const (
 	DEL    = "DEL"
 	EXISTS = "EXISTS"
 	TIME   = "TIME"
+	EXPIRE = "EXPIRE"
 	OK     = "OK"
 	CRLF   = "\r\n"
 )
@@ -32,12 +35,18 @@ type RedisServer struct {
 	connectionCompletedChannel chan *clientconnection.ClientConnection
 	connections                *clientconnection.Store
 	dataStore                  keyvaluestore.Store
+	timersMap                  map[string]*time.Timer
+	timersMapLock              *sync.Mutex
 }
 
 // Initialisation
 
 func New(listener net.Listener) *RedisServer {
-	return &RedisServer{listener: listener, connections: clientconnection.NewStore(), dataStore: keyvaluestore.New()}
+	return &RedisServer{listener: listener,
+		connections:   clientconnection.NewStore(),
+		dataStore:     keyvaluestore.New(),
+		timersMap:     make(map[string]*time.Timer),
+		timersMapLock: &sync.Mutex{}}
 }
 
 func (server *RedisServer) Init() {
@@ -52,6 +61,7 @@ func (server *RedisServer) Init() {
 	router.AddRedisCommandHandler(DEL, server.deleteHandler)
 	router.AddRedisCommandHandler(EXISTS, server.existsHandler)
 	router.AddRedisCommandHandler(TIME, server.timeHandler)
+	router.AddRedisCommandHandler(EXPIRE, server.expireHandler)
 
 	server.router = router
 
@@ -153,6 +163,7 @@ func (server *RedisServer) deleteHandler(args []string, responder router.Respond
 		key := args[i]
 		success := server.dataStore.DeleteString(key)
 		if success {
+			server.cancelTimerForKeyIfExists(key)
 			deleted++
 		}
 	}
@@ -193,6 +204,81 @@ func (server *RedisServer) timeHandler(args []string, responder router.Responder
 	writer.AddBulkString(fmt.Sprintf("%v", milliseconds))
 
 	server.writeResponse(writer)
+}
+
+func (server *RedisServer) expireHandler(args []string, responder router.Responder) {
+	writer := responsewriter.New(responder)
+	if len(args) == 2 {
+		key := args[0]
+		expirySecondsString := args[1]
+
+		expirySeconds, err := strconv.Atoi(expirySecondsString)
+		if err != nil {
+			writer.AddErrorString(fmt.Sprintf("unable to parse argument for expiry time in seconds: %v", err))
+		} else {
+			_, err := server.dataStore.StringForKey(key)
+			if err != nil {
+				writer.AddErrorString("cannot set expiry for non existent key!")
+			} else {
+				server.expireKey(key, expirySeconds)
+				writer.AddSimpleString(OK)
+			}
+		}
+	} else {
+		writer.AddErrorString("incorrect number of args - should have two, a key and expiry time")
+	}
+	server.writeResponse(writer)
+}
+
+// Timing Handlers (To be moved to its own separated structure to handle expiry)
+func (server *RedisServer) expireKey(key string, afterSeconds int) {
+	// Cancel existing timer
+	server.cancelTimerForKeyIfExists(key)
+
+	// Start new timer
+	timer := time.NewTimer(time.Duration(afterSeconds) * time.Second)
+	server.storeTimerForKey(timer, key)
+	go server.runTimer(timer, key)
+}
+
+func (server *RedisServer) runTimer(timer *time.Timer, key string) {
+	<-timer.C
+
+	server.removeTimerForKey(timer, key)
+
+	fmt.Printf("Deleting expiring key: %v", key)
+	server.dataStore.DeleteString(key)
+}
+
+func (server *RedisServer) storeTimerForKey(timer *time.Timer, key string) {
+	server.timersMapLock.Lock()
+	defer server.timersMapLock.Unlock()
+
+	server.timersMap[key] = timer
+}
+
+func (server *RedisServer) removeTimerForKey(timer *time.Timer, key string) {
+	server.timersMapLock.Lock()
+	defer server.timersMapLock.Unlock()
+
+	_, exists := server.timersMap[key]
+	if exists {
+		delete(server.timersMap, key)
+	}
+}
+
+func (server *RedisServer) cancelTimerForKeyIfExists(key string) {
+	server.timersMapLock.Lock()
+	defer server.timersMapLock.Unlock()
+
+	timer, exists := server.timersMap[key]
+	if exists {
+		stopped := timer.Stop()
+		if !stopped {
+			fmt.Println("Failed to stop timer!")
+		}
+		delete(server.timersMap, key)
+	}
 }
 
 // Response helpers

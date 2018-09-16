@@ -17,7 +17,12 @@ func New(dataStore keyvaluestore.Store) *Handler {
 	return &Handler{dataStore: dataStore, timersMap: make(map[string]*ttltimer.TTLTimer), timersMapLock: &sync.Mutex{}}
 }
 
-func (handler *Handler) ExpireKeyAfterSeconds(key string, afterSeconds int) {
+func (handler *Handler) ExpireKeyAfterSeconds(key string, afterSeconds int) error {
+	_, err := handler.dataStore.StringForKey(key)
+	if err != nil {
+		return fmt.Errorf("Cannot set expiry for nonexistent key %v", key)
+	}
+
 	// Cancel existing timer
 	handler.CancelTimerForKeyIfExists(key)
 
@@ -25,6 +30,7 @@ func (handler *Handler) ExpireKeyAfterSeconds(key string, afterSeconds int) {
 	timer := ttltimer.New(afterSeconds)
 	handler.storeTimerForKey(timer, key)
 	go handler.runTimer(timer, key)
+	return nil
 }
 
 func (handler *Handler) CancelTimerForKeyIfExists(key string) {

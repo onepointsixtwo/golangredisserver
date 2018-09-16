@@ -223,11 +223,11 @@ func (server *RedisServer) expireHandler(args []string, connection connection.Co
 		if err != nil {
 			writer.AddErrorString(fmt.Sprintf("unable to parse argument for expiry time in seconds: %v", err))
 		} else {
-			_, err := server.dataStore.StringForKey(key)
+			err := server.expiryHandler.ExpireKeyAfterSeconds(key, expirySeconds)
 			if err != nil {
 				writer.AddErrorString("cannot set expiry for non existent key!")
 			} else {
-				server.expiryHandler.ExpireKeyAfterSeconds(key, expirySeconds)
+
 				writer.AddSimpleString(OK)
 			}
 		}

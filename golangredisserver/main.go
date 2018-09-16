@@ -3,7 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/onepointsixtwo/golangredisserver"
+	"github.com/onepointsixtwo/golangredisserver/clientconnection"
+	"github.com/onepointsixtwo/golangredisserver/expiry"
+	"github.com/onepointsixtwo/golangredisserver/handlers"
 	"github.com/onepointsixtwo/golangredisserver/keyvaluestore"
+	"github.com/onepointsixtwo/golangredisserver/stringshandlers"
 	"net"
 )
 
@@ -19,7 +23,17 @@ func main() {
 		return
 	}
 
-	server := golangredisserver.New(listener, keyvaluestore.New())
+	// Create other dependencies for handler factories
+	keyValueDataStore := keyvaluestore.New()
+	expiryHandler := expiry.New(keyValueDataStore)
+	connectionsStore := clientconnection.NewStore()
+
+	// Create handler factories
+	strings := stringshandlers.NewFactory(keyValueDataStore, expiryHandler)
+	factories := []handlers.Factory{strings}
+
+	// Initialise golang redis server with created dependencies
+	server := golangredisserver.New(listener, connectionsStore, factories)
 	server.Init()
 
 	err = server.Start()

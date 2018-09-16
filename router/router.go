@@ -9,6 +9,7 @@ import (
 // The router interface - allows other layers using router to be testable easily.
 type Router interface {
 	RouteIncomingCommand(command string, args []string, connection connection.Connection) error
+	AddRedisCommandHandler(command string, handler RoutingHandler)
 }
 
 // RedisRouter types. The router holds a list of handler functions mapped by string

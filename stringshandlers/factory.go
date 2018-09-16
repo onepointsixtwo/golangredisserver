@@ -30,7 +30,7 @@ func NewFactory(dataStore keyvaluestore.Store, expiryHandler *expiry.Handler) *F
 	return &Factory{dataStore, expiryHandler}
 }
 
-func (factory *Factory) AddHandlersToRouter(router *router.RedisRouter) {
+func (factory *Factory) AddHandlersToRouter(router router.Router) {
 	router.AddRedisCommandHandler(PING, factory.handlePing)
 	router.AddRedisCommandHandler(GET, factory.handleGet)
 	router.AddRedisCommandHandler(SET, factory.handleSet)

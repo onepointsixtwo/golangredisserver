@@ -1,6 +1,7 @@
 package clientconnection
 
 import (
+	"github.com/onepointsixtwo/golangredisserver/connection"
 	"github.com/onepointsixtwo/golangredisserver/mocks"
 	"testing"
 )
@@ -15,7 +16,7 @@ import (
 
 func TestClientConnectionReadsFromConn(t *testing.T) {
 	commands := "*2\r\n$4\r\nPING\r\n$4\r\nblah\r\n*1\r\n$4\r\nPING\r\n"
-	finishedChannel := make(chan *ClientConnection, 1)
+	finishedChannel := make(chan connection.Connection, 1)
 
 	sut, _, mockRouter := createClientConnectionAndDependencies(commands, finishedChannel)
 
@@ -38,7 +39,7 @@ func TestClientConnectionReadsFromConn(t *testing.T) {
 
 func TestClientConnectionWritesToConn(t *testing.T) {
 	command := "*1\r\n$4\r\nPING\r\n"
-	finishedChannel := make(chan *ClientConnection, 1)
+	finishedChannel := make(chan connection.Connection, 1)
 
 	sut, connection, mockRouter := createClientConnectionAndDependencies(command, finishedChannel)
 
@@ -55,7 +56,7 @@ func TestClientConnectionWritesToConn(t *testing.T) {
 
 func TestClientConnectionClosesConnectionWhenReadingComplete(t *testing.T) {
 	command := "*1\r\n$4\r\nPING\r\n"
-	finishedChannel := make(chan *ClientConnection, 1)
+	finishedChannel := make(chan connection.Connection, 1)
 
 	sut, connection, _ := createClientConnectionAndDependencies(command, finishedChannel)
 
@@ -68,7 +69,7 @@ func TestClientConnectionClosesConnectionWhenReadingComplete(t *testing.T) {
 
 func TestClientConnectionSendsCloseToChannelWhenComplete(t *testing.T) {
 	command := "*1\r\n$4\r\nPING\r\n"
-	finishedChannel := make(chan *ClientConnection)
+	finishedChannel := make(chan connection.Connection)
 
 	sut, _, _ := createClientConnectionAndDependencies(command, finishedChannel)
 
@@ -82,7 +83,7 @@ func TestClientConnectionSendsCloseToChannelWhenComplete(t *testing.T) {
 }
 
 // Helpers - create the client and the mock dependencies needed for all tests
-func createClientConnectionAndDependencies(clientCommands string, finishedChannel chan *ClientConnection) (*ClientConnection, *mocks.MockConnection, *mocks.MockRouter) {
+func createClientConnectionAndDependencies(clientCommands string, finishedChannel chan connection.Connection) (*ClientConnection, *mocks.MockConnection, *mocks.MockRouter) {
 	conn, router := createTestDependencies(clientCommands)
 	return New(conn, router, finishedChannel), conn, router
 }

@@ -13,11 +13,11 @@ import (
 type ClientConnection struct {
 	connection      net.Conn
 	router          router.Router
-	finishedChannel chan<- *ClientConnection
+	finishedChannel chan<- connection.Connection
 	timeout         time.Duration
 }
 
-func New(connection net.Conn, router router.Router, finished chan<- *ClientConnection) *ClientConnection {
+func New(connection net.Conn, router router.Router, finished chan<- connection.Connection) *ClientConnection {
 	timeout := time.Duration(5) * time.Second
 	return &ClientConnection{connection: connection, router: router, finishedChannel: finished, timeout: timeout}
 }

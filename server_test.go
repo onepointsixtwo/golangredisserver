@@ -3,8 +3,12 @@ package golangredisserver
 import (
 	"bytes"
 	"fmt"
+	"github.com/onepointsixtwo/golangredisserver/clientconnection"
+	"github.com/onepointsixtwo/golangredisserver/expiry"
+	"github.com/onepointsixtwo/golangredisserver/handlers"
 	"github.com/onepointsixtwo/golangredisserver/keyvaluestore"
 	"github.com/onepointsixtwo/golangredisserver/mocks"
+	"github.com/onepointsixtwo/golangredisserver/stringshandlers"
 	"testing"
 	"time"
 )
@@ -150,7 +154,7 @@ func runServerTest(clientCommands string, store keyvaluestore.Store, response Se
 	if store == nil {
 		store = keyvaluestore.New()
 	}
-	sut := New(listener, store)
+	sut := New(listener, clientconnection.NewStore(), getHandlerFactories(store))
 	sut.Init()
 
 	go sut.Start()
@@ -163,4 +167,12 @@ func runServerTest(clientCommands string, store keyvaluestore.Store, response Se
 
 	output := listener.Connection.WriteBuffer.String()
 	response(output, sut)
+}
+
+func getHandlerFactories(store keyvaluestore.Store) []handlers.Factory {
+	handler := expiry.New(store)
+
+	strings := stringshandlers.NewFactory(store, handler)
+
+	return []handlers.Factory{strings}
 }

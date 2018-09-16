@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"github.com/onepointsixtwo/golangredisserver/connection"
+	"github.com/onepointsixtwo/golangredisserver/router"
 )
 
 type MockRouter struct {
@@ -22,4 +23,8 @@ func (mockRouter *MockRouter) RouteIncomingCommand(command string, args []string
 	receivedCommand := &ReceivedCommand{command, args, connection}
 	mockRouter.CommandsReceived = append(mockRouter.CommandsReceived, receivedCommand)
 	return nil
+}
+
+func (router *MockRouter) AddRedisCommandHandler(command string, handler router.RoutingHandler) {
+	// Do nothing for now.
 }

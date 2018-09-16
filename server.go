@@ -3,10 +3,9 @@ package golangredisserver
 import (
 	"fmt"
 	"github.com/onepointsixtwo/golangredisserver/clientconnection"
-	"github.com/onepointsixtwo/golangredisserver/expiry"
-	"github.com/onepointsixtwo/golangredisserver/keyvaluestore"
+	"github.com/onepointsixtwo/golangredisserver/connection"
+	"github.com/onepointsixtwo/golangredisserver/handlers"
 	"github.com/onepointsixtwo/golangredisserver/router"
-	"github.com/onepointsixtwo/golangredisserver/stringshandlers"
 	"net"
 )
 
@@ -16,33 +15,25 @@ import (
 type RedisServer struct {
 	listener                   net.Listener
 	router                     router.Router
-	connectionCompletedChannel chan *clientconnection.ClientConnection
-	connections                *clientconnection.Store
-	// This structure will probably change to instead be an array of interface.Factory where interface.Factory is implemented by stringshandler.Factory
-	// and any others added later.
-	stringHandlerFactory *stringshandlers.Factory
+	connections                connection.Store
+	handlerFactories           []handlers.Factory
+	connectionCompletedChannel chan connection.Connection
 }
 
 // Initialisation
 
-func New(listener net.Listener, dataStore keyvaluestore.Store) *RedisServer {
-	connections := clientconnection.NewStore()
-	expiryHandler := expiry.New(dataStore)
-
-	stringHandlersFactory := stringshandlers.NewFactory(dataStore, expiryHandler)
-
+func New(listener net.Listener, connections connection.Store, handlerFactories []handlers.Factory) *RedisServer {
 	return &RedisServer{listener: listener,
-		connections:          connections,
-		stringHandlerFactory: stringHandlersFactory}
+		router:                     router.NewRedisRouter(),
+		connections:                connections,
+		handlerFactories:           handlerFactories,
+		connectionCompletedChannel: make(chan connection.Connection)}
 }
 
 func (server *RedisServer) Init() {
-	router := router.NewRedisRouter()
-	server.stringHandlerFactory.AddHandlersToRouter(router)
-	server.router = router
-
-	// Setup the channel for listening if connections to clients are completed
-	server.connectionCompletedChannel = make(chan *clientconnection.ClientConnection)
+	for i := 0; i < len(server.handlerFactories); i++ {
+		server.handlerFactories[i].AddHandlersToRouter(server.router)
+	}
 }
 
 func (server *RedisServer) Start() error {

@@ -5,5 +5,5 @@ import (
 )
 
 type ConnectionFactory interface {
-	CreateConnection(net.Conn, chan<- Connection) Connection
+	CreateConnection(networkConnection net.Conn, finishedChannel chan<- Connection) Connection
 }

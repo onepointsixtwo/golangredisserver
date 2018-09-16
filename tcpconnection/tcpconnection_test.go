@@ -1,4 +1,4 @@
-package clientconnection
+package tcpconnection
 
 import (
 	"github.com/onepointsixtwo/golangredisserver/connection"
@@ -14,11 +14,11 @@ import (
 
 // Tests
 
-func TestClientConnectionReadsFromConn(t *testing.T) {
+func TestTCPConnectionReadsFromConn(t *testing.T) {
 	commands := "*2\r\n$4\r\nPING\r\n$4\r\nblah\r\n*1\r\n$4\r\nPING\r\n"
 	finishedChannel := make(chan connection.Connection, 1)
 
-	sut, _, mockRouter := createClientConnectionAndDependencies(commands, finishedChannel)
+	sut, _, mockRouter := createTCPConnectionAndDependencies(commands, finishedChannel)
 
 	sut.Start()
 
@@ -37,11 +37,11 @@ func TestClientConnectionReadsFromConn(t *testing.T) {
 	}
 }
 
-func TestClientConnectionWritesToConn(t *testing.T) {
+func TestTCPConnectionWritesToConn(t *testing.T) {
 	command := "*1\r\n$4\r\nPING\r\n"
 	finishedChannel := make(chan connection.Connection, 1)
 
-	sut, connection, mockRouter := createClientConnectionAndDependencies(command, finishedChannel)
+	sut, connection, mockRouter := createTCPConnectionAndDependencies(command, finishedChannel)
 
 	sut.Start()
 
@@ -54,11 +54,11 @@ func TestClientConnectionWritesToConn(t *testing.T) {
 	}
 }
 
-func TestClientConnectionClosesConnectionWhenReadingComplete(t *testing.T) {
+func TestTCPConnectionClosesConnectionWhenReadingComplete(t *testing.T) {
 	command := "*1\r\n$4\r\nPING\r\n"
 	finishedChannel := make(chan connection.Connection, 1)
 
-	sut, connection, _ := createClientConnectionAndDependencies(command, finishedChannel)
+	sut, connection, _ := createTCPConnectionAndDependencies(command, finishedChannel)
 
 	sut.Start()
 
@@ -67,23 +67,23 @@ func TestClientConnectionClosesConnectionWhenReadingComplete(t *testing.T) {
 	}
 }
 
-func TestClientConnectionSendsCloseToChannelWhenComplete(t *testing.T) {
+func TestTCPConnectionSendsCloseToChannelWhenComplete(t *testing.T) {
 	command := "*1\r\n$4\r\nPING\r\n"
 	finishedChannel := make(chan connection.Connection)
 
-	sut, _, _ := createClientConnectionAndDependencies(command, finishedChannel)
+	sut, _, _ := createTCPConnectionAndDependencies(command, finishedChannel)
 
 	sut.Start()
 
-	closedClientConnection := <-finishedChannel
+	closedTCPConnection := <-finishedChannel
 
-	if closedClientConnection != sut {
+	if closedTCPConnection != sut {
 		t.Error("When client connection is completed it should send itself as closed to the finished channel")
 	}
 }
 
 // Helpers - create the client and the mock dependencies needed for all tests
-func createClientConnectionAndDependencies(clientCommands string, finishedChannel chan connection.Connection) (*ClientConnection, *mocks.MockConnection, *mocks.MockRouter) {
+func createTCPConnectionAndDependencies(clientCommands string, finishedChannel chan connection.Connection) (*TCPConnection, *mocks.MockConnection, *mocks.MockRouter) {
 	conn, router := createTestDependencies(clientCommands)
 	return New(conn, router, finishedChannel), conn, router
 }

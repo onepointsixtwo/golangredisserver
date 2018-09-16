@@ -1,27 +1,26 @@
-package clientconnection
+package connection
 
 import (
-	"github.com/onepointsixtwo/golangredisserver/connection"
 	"sync"
 )
 
-type Store struct {
+type ConnectionStore struct {
 	connectionsMutex *sync.Mutex
-	connections      []connection.Connection
+	connections      []Connection
 }
 
-func NewStore() *Store {
-	return &Store{&sync.Mutex{}, make([]connection.Connection, 0)}
+func NewStore() Store {
+	return &ConnectionStore{&sync.Mutex{}, make([]Connection, 0)}
 }
 
-func (store *Store) AddClientConnection(connection connection.Connection) {
+func (store *ConnectionStore) AddClientConnection(connection Connection) {
 	store.connectionsMutex.Lock()
 	defer store.connectionsMutex.Unlock()
 
 	store.connections = append(store.connections, connection)
 }
 
-func (store *Store) RemoveClientConnection(connection connection.Connection) {
+func (store *ConnectionStore) RemoveClientConnection(connection Connection) {
 	store.connectionsMutex.Lock()
 	defer store.connectionsMutex.Unlock()
 
@@ -40,7 +39,7 @@ func (store *Store) RemoveClientConnection(connection connection.Connection) {
 	}
 }
 
-func (store *Store) GetClientConnectionsCount() int {
+func (store *ConnectionStore) GetClientConnectionsCount() int {
 	store.connectionsMutex.Lock()
 	defer store.connectionsMutex.Unlock()
 	return len(store.connections)

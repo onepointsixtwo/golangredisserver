@@ -112,7 +112,8 @@ func getSut() (*ResponseWriter, *mockConnection) {
 	return New(responder), responder
 }
 
-// Mock responder
+//TODO: move into mocks package - repeated both here and in connectionstore_test.go
+// Mock connection
 type mockConnection struct {
 	responseWritten string
 }
@@ -121,8 +122,10 @@ func newMockConnection() *mockConnection {
 	return &mockConnection{}
 }
 
-func (responder *mockConnection) SendResponse(response string) {
-	responder.responseWritten = response
+func (connection *mockConnection) Start() {}
+
+func (connection *mockConnection) SendResponse(response string) {
+	connection.responseWritten = response
 }
 
 func (connection *mockConnection) CreateResponseWriter() connection.ConnectionResponseWriter {

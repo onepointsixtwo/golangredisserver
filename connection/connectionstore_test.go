@@ -1,23 +1,22 @@
-package clientconnection
+package connection
 
 import (
 	"testing"
 )
 
-// Note: for simplicity instances are created here using just &ClientConnection
-// since the store doesn't care if instances are empty
+// Tests
 
 func TestInsertingIntoClientConnectionStore(t *testing.T) {
 	store := NewStore()
 
-	connection1 := &ClientConnection{}
+	connection1 := newMockConnection()
 	store.AddClientConnection(connection1)
 
 	if store.GetClientConnectionsCount() != 1 {
 		t.Errorf("After inserting 1 connection the store should contain 1 but contains %v", store.GetClientConnectionsCount())
 	}
 
-	connection2 := &ClientConnection{}
+	connection2 := newMockConnection()
 	store.AddClientConnection(connection2)
 
 	if store.GetClientConnectionsCount() != 2 {
@@ -25,7 +24,7 @@ func TestInsertingIntoClientConnectionStore(t *testing.T) {
 	}
 
 	for x := 0; x < 30; x++ {
-		store.AddClientConnection(&ClientConnection{})
+		store.AddClientConnection(newMockConnection())
 	}
 
 	if store.GetClientConnectionsCount() != 32 {
@@ -36,10 +35,10 @@ func TestInsertingIntoClientConnectionStore(t *testing.T) {
 func TestDeletingFromClientConnectionStore(t *testing.T) {
 	store := NewStore()
 
-	connection1 := &ClientConnection{}
+	connection1 := newMockConnection()
 	store.AddClientConnection(connection1)
 
-	connection2 := &ClientConnection{}
+	connection2 := newMockConnection()
 	store.AddClientConnection(connection2)
 
 	if store.GetClientConnectionsCount() != 2 {
@@ -57,4 +56,19 @@ func TestDeletingFromClientConnectionStore(t *testing.T) {
 	if store.GetClientConnectionsCount() != 0 {
 		t.Errorf("The store should contain zero connections but contains %v", store.GetClientConnectionsCount())
 	}
+}
+
+// Mock Connection
+type MockConnection struct{}
+
+func newMockConnection() *MockConnection {
+	return &MockConnection{}
+}
+
+func (conn *MockConnection) Start() {}
+
+func (conn *MockConnection) SendResponse(response string) {}
+
+func (conn *MockConnection) CreateResponseWriter() ConnectionResponseWriter {
+	return nil
 }

@@ -1,4 +1,4 @@
-package clientconnection
+package tcpconnection
 
 import (
 	"fmt"
@@ -10,19 +10,19 @@ import (
 	"time"
 )
 
-type ClientConnection struct {
+type TCPConnection struct {
 	connection      net.Conn
 	router          router.Router
 	finishedChannel chan<- connection.Connection
 	timeout         time.Duration
 }
 
-func New(connection net.Conn, router router.Router, finished chan<- connection.Connection) *ClientConnection {
+func New(connection net.Conn, router router.Router, finished chan<- connection.Connection) *TCPConnection {
 	timeout := time.Duration(5) * time.Second
-	return &ClientConnection{connection: connection, router: router, finishedChannel: finished, timeout: timeout}
+	return &TCPConnection{connection: connection, router: router, finishedChannel: finished, timeout: timeout}
 }
 
-func (connection *ClientConnection) Start() {
+func (connection *TCPConnection) Start() {
 	fmt.Printf("Handling incoming connection from %v\n", connection.connection.RemoteAddr())
 
 	connection.readAllFromConnection()
@@ -32,13 +32,13 @@ func (connection *ClientConnection) Start() {
 }
 
 // Sends that the connection has been closed to the channel
-func (connection *ClientConnection) sendConnectionCloseToChannel() {
+func (connection *TCPConnection) sendConnectionCloseToChannel() {
 	connection.finishedChannel <- connection
 }
 
 // Keeps reading from the connection while there's still data to read, and handling
 // the incoming commands
-func (connection *ClientConnection) readAllFromConnection() {
+func (connection *TCPConnection) readAllFromConnection() {
 	readCommand := reader.CreateRespCommandReader(connection.connection)
 
 	for {
@@ -61,7 +61,7 @@ func (connection *ClientConnection) readAllFromConnection() {
 }
 
 // Closes the connection to the client
-func (connection *ClientConnection) closeConnection() {
+func (connection *TCPConnection) closeConnection() {
 	err := connection.connection.Close()
 	if err != nil {
 		fmt.Printf("Error while attempting to close connection to client %v\n", err)
@@ -69,7 +69,7 @@ func (connection *ClientConnection) closeConnection() {
 }
 
 // Handles commands read from the incoming connection
-func (connection *ClientConnection) handleCommand(respCommand *reader.RespCommand) error {
+func (connection *TCPConnection) handleCommand(respCommand *reader.RespCommand) error {
 	cmd := respCommand.Command
 	args := respCommand.Args
 
@@ -80,11 +80,11 @@ func (connection *ClientConnection) handleCommand(respCommand *reader.RespComman
 
 // connection.Connection implementation
 
-func (connection *ClientConnection) SendResponse(response string) {
+func (connection *TCPConnection) SendResponse(response string) {
 	connection.connection.SetWriteDeadline(time.Now().Add(connection.timeout))
 	fmt.Fprintf(connection.connection, "%v", response)
 }
 
-func (connection *ClientConnection) CreateResponseWriter() connection.ConnectionResponseWriter {
+func (connection *TCPConnection) CreateResponseWriter() connection.ConnectionResponseWriter {
 	return responsewriter.New(connection)
 }

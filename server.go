@@ -2,7 +2,6 @@ package golangredisserver
 
 import (
 	"fmt"
-	"github.com/onepointsixtwo/golangredisserver/clientconnection"
 	"github.com/onepointsixtwo/golangredisserver/connection"
 	"github.com/onepointsixtwo/golangredisserver/handlers"
 	"github.com/onepointsixtwo/golangredisserver/router"
@@ -17,16 +16,18 @@ type RedisServer struct {
 	router                     router.Router
 	connections                connection.Store
 	handlerFactories           []handlers.Factory
+	connectionFactory          connection.ConnectionFactory
 	connectionCompletedChannel chan connection.Connection
 }
 
 // Initialisation
 
-func New(listener net.Listener, connections connection.Store, handlerFactories []handlers.Factory) *RedisServer {
+func New(listener net.Listener, router router.Router, connections connection.Store, handlerFactories []handlers.Factory, connectionFactory connection.ConnectionFactory) *RedisServer {
 	return &RedisServer{listener: listener,
-		router:                     router.NewRedisRouter(),
+		router:                     router,
 		connections:                connections,
 		handlerFactories:           handlerFactories,
+		connectionFactory:          connectionFactory,
 		connectionCompletedChannel: make(chan connection.Connection)}
 }
 
@@ -42,19 +43,19 @@ func (server *RedisServer) Start() error {
 	go server.handleCompletedConnections()
 
 	for {
-		connectionToClient, err := server.listener.Accept()
+		conn, err := server.listener.Accept()
 		if err != nil {
 			return fmt.Errorf("Error accepting incoming connection %v\n", err)
 		}
-		server.handleNewClient(connectionToClient)
+		server.handleNewClient(conn)
 	}
 }
 
 // Starting connections
 func (server *RedisServer) handleNewClient(conn net.Conn) {
-	clientConn := clientconnection.New(conn, server.router, server.connectionCompletedChannel)
-	server.connections.AddClientConnection(clientConn)
-	go clientConn.Start()
+	connection := server.connectionFactory.CreateConnection(conn, server.connectionCompletedChannel)
+	server.connections.AddClientConnection(connection)
+	go connection.Start()
 }
 
 // Connections Completed Handling

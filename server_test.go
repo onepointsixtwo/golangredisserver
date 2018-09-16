@@ -9,6 +9,22 @@ import (
 	"time"
 )
 
+const (
+	PING   = "PING"
+	SET    = "SET"
+	GET    = "GET"
+	GETSET = "GETSET"
+	DEL    = "DEL"
+	EXISTS = "EXISTS"
+	TIME   = "TIME"
+	EXPIRE = "EXPIRE"
+	TTL    = "TTL"
+
+	OK = "OK"
+
+	CRLF = "\r\n"
+)
+
 // Tests
 
 func TestPingWithoutExtraData(t *testing.T) {
@@ -31,8 +47,9 @@ func TestPingWithExtraData(t *testing.T) {
 
 func TestSetValueWithGoodKeyAndValue(t *testing.T) {
 	command := createCommandString(SET, "mykey", "myvalue")
-	runServerTest(command, nil, func(response string, sut *RedisServer) {
-		value, _ := sut.dataStore.StringForKey("mykey")
+	dataStore := keyvaluestore.New()
+	runServerTest(command, dataStore, func(response string, sut *RedisServer) {
+		value, _ := dataStore.StringForKey("mykey")
 		if value != "myvalue" || response != "+OK\r\n" {
 			t.Errorf("Response to SET mykey myvalue should be +OK and value should be in store, but response is %v, value in store is %v", response, value)
 		}
@@ -130,13 +147,10 @@ func runServerTest(clientCommands string, store keyvaluestore.Store, response Se
 	listener := mocks.NewMockListener(clientCommands)
 
 	// Create the sut (RedisServer) with the created listener.
-	sut := New(listener)
-
-	// Replace the store to pre-filled if exists
-	if store != nil {
-		sut.dataStore = store
+	if store == nil {
+		store = keyvaluestore.New()
 	}
-
+	sut := New(listener, store)
 	sut.Init()
 
 	go sut.Start()

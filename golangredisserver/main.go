@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/onepointsixtwo/golangredisserver"
+	"github.com/onepointsixtwo/golangredisserver/keyvaluestore"
 	"net"
 )
 
@@ -18,7 +19,7 @@ func main() {
 		return
 	}
 
-	server := golangredisserver.New(listener)
+	server := golangredisserver.New(listener, keyvaluestore.New())
 	server.Init()
 
 	err = server.Start()
